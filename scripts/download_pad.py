@@ -3,9 +3,18 @@ import argparse
 import hashlib
 from pathlib import Path
 import tempfile
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 from liveness import DEFAULT_MODEL, MODEL_SHA384, MODEL_SIZE, MODEL_URL, verified_weights
+
+
+def _download_payload():
+    parsed_url = urlparse(MODEL_URL)
+    if parsed_url.scheme != "https" or not parsed_url.netloc:
+        raise RuntimeError("URL du modèle PAD non sécurisée : HTTPS requis.")
+    with urlopen(MODEL_URL, timeout=30) as response:  # nosec B310 - HTTPS validé ci-dessus
+        return response.read(MODEL_SIZE + 1)
 
 
 def download(destination):
@@ -13,8 +22,7 @@ def download(destination):
     if destination.exists():
         verified_weights(destination)
         return destination
-    with urlopen(MODEL_URL, timeout=30) as response:
-        payload = response.read(MODEL_SIZE + 1)
+    payload = _download_payload()
     if len(payload) != MODEL_SIZE or hashlib.sha384(payload).hexdigest() != MODEL_SHA384:
         raise RuntimeError("Le téléchargement ne correspond pas à l'empreinte officielle ; fichier non installé.")
     destination.parent.mkdir(parents=True, exist_ok=True)
