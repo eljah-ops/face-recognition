@@ -11,7 +11,7 @@ import sys
 
 MAX_BYTES = 1024 * 1024
 PRIVATE_DIRS = {
-    "data", "faces", "archives", "exports", ".ssh", ".aws", ".venv", "venv",
+    "data", "models", "verification", "faces", "archives", "exports", "qa_datasets", "reports", ".ssh", ".aws", ".venv", "venv",
     "__pycache__", ".agents", ".codex", ".idea", ".vscode",
 }
 PRIVATE_NAMES = (

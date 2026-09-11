@@ -1,0 +1,13 @@
+# Seuils d'ingénierie initiaux à calibrer avant la campagne, sans les adapter
+# aux résultats observés. Aucun de ces seuils ne constitue une certification.
+max_far = 0.001
+max_frr = 0.05
+max_mean_latency_ms = 100.0
+min_genuine_attempts = 100
+min_impostor_attempts = 1000
+min_attempts_per_scenario = 20
+
+# Invariants : leur désactivation est une erreur de configuration.
+require_liveness = true
+require_one_to_one = true
+max_spoof_acceptances = 0

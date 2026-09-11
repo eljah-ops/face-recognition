@@ -99,6 +99,23 @@ Les tests vérifient entraînement et rechargement, archivage, réglages, filtra
 Les tests de sécurité vérifient aussi le refus de données privées ajoutées de force,
 de modèles renommés, de liens symboliques et de secrets encore présents dans l'index Git.
 
+## Banc QA de reconnaissance et anti-spoofing
+
+```bash
+python -m qa.validate --demo --output reports/face-qa
+```
+
+Le banc couvre enrôlement et matching 1:1, imposteurs, rejeux photo/vidéo,
+conditions extrêmes et changements d'apparence. Il produit des rapports **JSON et
+JUnit**, le **FAR**, le **FRR** et la **latence moyenne d'inférence**. Les seuils
+et effectifs requis sont configurés dans `qa/policy.toml`.
+
+La démonstration utilise des données fictives et retourne volontairement le code
+**2** : elle ne valide pas un déploiement. L'application actuelle ne dispose pas
+du PAD et du matching 1:1 exigés. L'adaptateur applicatif est à connecter ; ces
+capacités manquantes restent bloquantes. Les chargeurs fictifs, le format des vrais
+datasets et la procédure d'intégration sont décrits dans [le guide QA](docs/QA.md).
+
 ## Préparer un envoi GitHub
 
 Conserve le dépôt en **privé**. Avant chaque commit :
@@ -119,7 +136,7 @@ Pour lancer les audits :
 ```bash
 python -m pip install -r requirements-dev.txt
 python -m pip_audit --strict -r requirements.txt -r requirements-dev.txt
-python -m bandit -r main.py gui.py recognition.py worker.py ui.py scripts -ll
+python -m bandit -r main.py gui.py recognition.py worker.py ui.py scripts qa -ll
 ```
 
 L'audit des dépendances consulte les bases de vulnérabilités en ligne ; il n'envoie
@@ -139,3 +156,5 @@ Les réglages GitHub à activer séparément sont décrits dans [SECURITY.md](SE
 - `scripts/check_repository.py` : contrôle des fichiers préparés pour Git.
 - `.github/` : tests, audits et configuration Dependabot.
 - `docs/AUDIT.md` : constats, limites et améliorations prioritaires.
+- `qa/` : scénarios, chargeurs, contrat d'adaptateur et rapports de validation.
+- `docs/QA.md` : exécution du banc et intégration de datasets réels.

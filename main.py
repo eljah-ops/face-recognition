@@ -134,17 +134,20 @@ def train(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for command in ("interface", "enregistrer", "entrainer", "reconnaitre"):
+    for command in ("interface", "enregistrer", "entrainer", "reconnaitre", "inscrire", "authentifier"):
         sub = subparsers.add_parser(command)
         sub.add_argument("--data", type=Path, default=ROOT / "data", help="Dossier local des données")
-        if command in ("enregistrer", "reconnaitre"):
+        if command in ("enregistrer", "reconnaitre", "inscrire", "authentifier"):
             sub.add_argument("--camera", type=int, default=0, help="Index de la webcam (défaut : 0)")
-        if command == "enregistrer":
+        if command in ("enregistrer", "inscrire", "authentifier"):
             sub.add_argument("--nom", type=person_name, required=True)
+        if command in ("enregistrer", "inscrire"):
             sub.add_argument("--samples", type=sample_count, default=1,
                              help="Nombre de captures, de 1 à 500 (défaut : 1)")
-        if command == "reconnaitre":
+        if command in ("reconnaitre", "authentifier"):
             sub.add_argument("--threshold", type=threshold_value, default=65, help="Distance maximale acceptée (défaut : 65)")
+        if command in ("inscrire", "authentifier"):
+            sub.add_argument("--pad-model", type=Path, help="Modèle officiel anti-spoof-mn3 (empreinte vérifiée)")
     args = parser.parse_args()
     if args.command == "interface":
         try:
@@ -163,6 +166,16 @@ def main():
         import numpy as np
         if not hasattr(cv2, "face"):
             raise RuntimeError("Installe opencv-contrib-python dans un environnement virtuel propre.")
+        if args.command in ("inscrire", "authentifier"):
+            import json
+            from types import SimpleNamespace
+            from worker import run_authentication
+            options = SimpleNamespace(mode=args.command, data=args.data, preview=None, name=args.nom,
+                                      pad_model=args.pad_model, settings=json.dumps({
+                                          "camera": args.camera, "samples": getattr(args, "samples", 1),
+                                          "threshold": getattr(args, "threshold", 65),
+                                      }))
+            return 0 if run_authentication(options) else 2
         if args.command == "entrainer":
             train(args)
         elif args.command == "enregistrer":
@@ -177,7 +190,7 @@ def main():
     except ImportError:
         print("Dépendances manquantes : python -m pip install -r requirements.txt", file=sys.stderr)
         return 1
-    except (RuntimeError, OSError, cv2.error) as error:
+    except (RuntimeError, OSError, ValueError, cv2.error) as error:
         print(f"Erreur : {error}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:

@@ -20,9 +20,13 @@ Thumbs.db
 
 # Données biométriques, y compris avec --data dans un autre dossier
 data/
+models/
+verification/
 faces/
 archives/
 exports/
+qa_datasets/
+reports/
 settings.json
 model*.yml
 model*.yaml

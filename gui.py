@@ -15,6 +15,7 @@ from tkinter import ttk, messagebox, filedialog
 from uuid import uuid4
 
 from main import ROOT, person_name
+from authentication import confined_path, verification_path
 from recognition import DEFAULTS, load_settings, save_settings
 from ui import BG, PAPER, INK, MUTED, ACCENT, NAVY, CYAN, card, configure_theme, VideoPanel, ScrollPanel, font
 
@@ -27,13 +28,16 @@ def list_people(data):
 def archive_person(data, name):
     """Retire une personne de l'entraînement en conservant ses captures."""
     name = person_name(name)
-    folder = data / "faces" / name
+    folder = confined_path(data, "faces", name)
     if not folder.is_dir() or folder.is_symlink():
         raise RuntimeError("Dossier de personne absent ou non pris en charge.")
     archive = data / "archives" / uuid4().hex
     archive.mkdir(parents=True)
     # Invalider d'abord le modèle pour ne plus reconnaître la personne retirée.
-    model = data / "model.yml"
+    model = confined_path(data, "model.yml")
+    verification = verification_path(data, name)
+    if verification.exists():
+        verification.replace(archive / "verification.yml")
     if model.exists():
         model.replace(archive / "model.yml")
     folder.rename(archive / name)
@@ -115,7 +119,7 @@ class Dashboard:
         self.progress.grid(row=4, column=0, sticky="ew", pady=(0, 12))
         actions = ttk.Frame(camera_card, style="Card.TFrame")
         actions.grid(row=5, column=0, sticky="ew")
-        for column, (label, command) in enumerate([("Aperçu", "apercu"), ("Entraîner", "entrainer"), ("Reconnaître", "reconnaitre")]):
+        for column, (label, command) in enumerate([("Aperçu", "apercu"), ("Entraîner", "entrainer"), ("Identifier (démo)", "reconnaitre")]):
             button = ttk.Button(actions, text=label, command=lambda c=command: self.start(c), style="Accent.TButton" if command == "reconnaitre" else "TButton")
             button.grid(row=0, column=column, sticky="ew", padx=(0, 6))
             actions.columnconfigure(column, weight=1)
@@ -166,12 +170,15 @@ class Dashboard:
         self.capture_input.pack(fill="x")
         self.controls.append(self.capture_input)
         ttk.Label(session, text="Dès 1 capture · Jusqu’à 500", style="CardMuted.TLabel").pack(anchor="w", pady=(8, 12))
-        self.record_button = ttk.Button(session, text="Enregistrer le visage", command=lambda: self.start("enregistrer"), style="Accent.TButton")
+        self.record_button = ttk.Button(session, text="Inscrire avec contrôle du vivant", command=lambda: self.start("inscrire"), style="Accent.TButton")
         self.record_button.pack(fill="x")
         self.controls.append(self.record_button)
+        authenticate = ttk.Button(session, text="Vérifier cette identité (1:1)", command=lambda: self.start("authentifier"))
+        authenticate.pack(fill="x", pady=(8, 0))
+        self.controls.append(authenticate)
         steps = tk.Frame(session, bg="#eef3ff", padx=14, pady=12)
         steps.pack(fill="x", pady=(12, 0))
-        for number, title in [("01", "Enregistre une personne"), ("02", "Entraîne le modèle"), ("03", "Lance la reconnaissance")]:
+        for number, title in [("01", "Inscris un profil avec PAD"), ("02", "Sélectionne son nom"), ("03", "Vérifie cette identité")]:
             row = tk.Frame(steps, bg="#eef3ff")
             row.pack(fill="x", pady=3)
             tk.Label(row, text=number, bg="#eef3ff", fg=ACCENT, font=font(11, "bold")).pack(side="left", padx=(0, 10))
@@ -269,7 +276,7 @@ class Dashboard:
             if command == "entrainer":
                 args = [sys.executable, "-u", str(ROOT / "main.py"), command, "--data", str(self.data)]
             else:
-                name = person_name(self.name.get()) if command == "enregistrer" else ""
+                name = person_name(self.name.get()) if command in ("enregistrer", "inscrire", "authentifier") else ""
                 if command == "reconnaitre" and not (self.data / "model.yml").is_file():
                     raise ValueError("Entraîne d'abord le modèle.")
                 self.preview = tempfile.TemporaryDirectory(prefix="face-studio-")
@@ -284,7 +291,10 @@ class Dashboard:
             messagebox.showerror("Impossible de démarrer", str(error), parent=self.root)
             return
         self.stopping = False
+        self.current_command = command
         self.last_seen.clear()
+        if command in ("inscrire", "authentifier"):
+            self.metrics.set("Contrôle du vivant · Modèle individuel · Validation terrain requise")
         self.progress.configure(maximum=settings["samples"], value=0)
         self.status.set(f"En cours : {command}…")
         self.append(f"\n→ {command}\n")
@@ -341,8 +351,12 @@ class Dashboard:
                 for control in self.controls:
                     control.configure(state="normal")
                 self.stop_button.configure(state="disabled")
-                self.status.set("Opération arrêtée." if self.stopping else
-                                "Opération terminée. Réentraîne après un ajout de captures." if value == 0 else "Échec : consulte le journal.")
+                if self.stopping:
+                    self.status.set("Opération arrêtée.")
+                elif self.current_command not in ("inscrire", "authentifier"):
+                    self.status.set("Opération terminée. Réentraîne après un ajout de captures." if value == 0 else "Échec : consulte le journal.")
+                elif value not in (0, 2):
+                    self.status.set("Échec : consulte le journal. Aucun accès accordé.")
                 if self.preview:
                     self.preview.cleanup()
                     self.preview = None

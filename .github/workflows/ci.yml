@@ -28,6 +28,9 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Installer les dépendances
         run: python -m pip install -r requirements.txt
+      - name: Installer et vérifier les poids PAD officiels
+        if: matrix.python == '3.14'
+        run: python -m scripts.download_pad
       - name: Vérifier les dépendances et les tests sans webcam
         run: |
           python -m pip check
@@ -51,4 +54,4 @@ jobs:
       - name: Chercher les vulnérabilités connues des dépendances
         run: python -m pip_audit --strict -r requirements.txt -r requirements-dev.txt
       - name: Analyser le code Python (gravité moyenne et haute)
-        run: python -m bandit -r main.py gui.py recognition.py worker.py ui.py scripts -ll
+        run: python -m bandit -r main.py gui.py recognition.py worker.py ui.py authentication.py liveness.py scripts qa -ll

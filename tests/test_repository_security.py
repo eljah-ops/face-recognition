@@ -14,6 +14,7 @@ class RepositorySecurityTests(unittest.TestCase):
             "custom/model-backup.yml", "custom/settings.json", "session.csv",
             ".env.production", "cert.pem", "capture.PNG", "backup.zip",
             "secrets.toml", "credentials.json", ".gitmodules",
+            "reports/biometric-results.md", "qa_datasets/identities.txt",
         ):
             with self.subTest(name=name):
                 self.assertIsNotNone(path_problem(name))
@@ -50,7 +51,8 @@ class RepositorySecurityTests(unittest.TestCase):
             self.git(root, "init", "-q")
             rules = Path(__file__).resolve().parents[1] / ".gitignore"
             (root / ".gitignore").write_bytes(rules.read_bytes())
-            for name in ("custom/faces/Test/capture.png", "custom/model.yml", "session.csv", ".env.local"):
+            for name in ("custom/faces/Test/capture.png", "custom/model.yml", "session.csv", ".env.local",
+                         "reports/report.json", "qa_datasets/manifest.json"):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("factice")
